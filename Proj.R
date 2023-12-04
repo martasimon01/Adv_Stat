@@ -245,10 +245,44 @@ corr <- cor(train[, sapply(train, is.numeric)], use = "complete.obs", method = "
 
 corr["Credit_Score",]
 
-plot(train)
+# Creazione dei boxplot per tutte le variabili
+par(mfrow = c(3, 6))
+boxplot(train$Age, main = "Age", col = "lightblue")
+boxplot(train$Annual_Income, main = "Annual Income", col = "lightgreen")
+boxplot(train$Monthly_Inhand_Salary, main = "Monthly Inhand Salary", col = "lightcoral")
+boxplot(train$Num_Bank_Accounts, main = "Num Bank Accounts", col = "lightgoldenrodyellow")
+boxplot(train$Num_Credit_Card, main = "Num Credit Card", col = "orange")
+boxplot(train$Interest_Rate, main = "Interest Rate", col = "violet")
+boxplot(train$Num_of_Loan, main = "Num of Loan", col = "pink")
+boxplot(train$Delay_from_due_date, main = "Delay from due date", col = "purple")
+boxplot(train$Num_of_Delayed_Payment, main = "Num of Delayed Payment", col = "brown")
+boxplot(train$Changed_Credit_Limit, main = "Changed Credit Limit", col = "gray")
+boxplot(train$Num_Credit_Inquiries, main = "Num Credit Inquires", col = "cyan")
+boxplot(train$Outstanding_Debt, main = "Outstanding Debt", col = "magenta")
+boxplot(train$Credit_Utilization_Ratio, main = "Credit Utilization Ratio", col = "lavender")
+boxplot(train$Credit_History_Age, main = "Credit History Age", col = "turquoise")
+boxplot(train$Total_EMI_per_month, main = "Total EMI per month", col = "beige")
+boxplot(train$Amount_invested_monthly, main = "Amount invested monthly", col = "salmon")
+boxplot(train$Monthly_Balance, main = "Monthly Balance", col = "plum")
+boxplot(train$Payment_Behaviour, main = "Payment Behaviour", col = "plum")
+dev.off()
 
 
-######DIVIDO IN TEST E TRAIN SET####
+###########INIZIO REGRESSIONE LOGISITCA##########################
+#MATRICE DI CORRELAZIONE
+library(corrplot)
+matrice_cor=cor(train)
+matrice_cor
+corrplot(matrice_cor,method="number")
+heatmap.2(matrice_cor, 
+          col = colorRampPalette(c("blue", "white", "red"))(20),
+          key = TRUE,   # Aggiunge la chiave di colori
+          symkey = FALSE,  # Usa la scala di colori simmetrica
+          density.info = "none",  # Non mostrare la densità
+          trace = "none",  # Non mostrare le tracce
+          main = "Heatmap della Correlazione con Numeri di Correlazione")
+
+##DIVIDO IN TEST E TRAIN SET##
 library(caTools)
 set.seed(123)
 split = sample.split(train$Credit_Score, SplitRatio = 0.8)
@@ -335,5 +369,4 @@ typeof(reg.pred)
 
 # Test error rate
 mean(reg.pred != Credit_Score_test)
-
 
