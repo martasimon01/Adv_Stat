@@ -28,11 +28,15 @@ train$Annual_Income = gsub('_', '', train$Annual_Income)
 train$Annual_Income = as.numeric(train$Annual_Income) 
 
 #SCARTO TUTTE LE RIGHE CHE HANNO UN VALORE Annual_Income ANOMALO
-train = subset(train, Annual_Income<1000000)
+train = subset(train, Annual_Income<250000)
 summary(train$Annual_Income)
 
+#SCARTO TUTTE LE RIGHE CHE HANNO UN VALORE Monthly_Inhand_Salary ANOMALO
+train = subset(train, Monthly_Inhand_Salary<10000)
+summary(train$Monthly_Inhand_Salary)
+
 #SCARTO TUTTE LE RIGHE CHE HANNO UN VALORE Num_Bank_Accounts ANOMALO
-train = subset(train, Num_Bank_Accounts>=0, Num_Bank_Accounts<20)
+train = subset(train, Num_Bank_Accounts>=0 & Num_Bank_Accounts<20)
 summary(train$Num_Bank_Accounts)
 
 #SCARTO TUTTE LE RIGHE CHE HANNO UN VALORE Num_Credit_Card ANOMALO
@@ -66,6 +70,10 @@ train$Changed_Credit_Limit = gsub('_', 0, train$Changed_Credit_Limit)
 train$Changed_Credit_Limit = as.numeric(train$Changed_Credit_Limit) 
 summary(train$Changed_Credit_Limit)
 
+#SCARTO TUTTE LE RIGHE CHE HANNO UN VALORE Changed_Credit_Limit ANOMALO
+train = subset(train, Changed_Credit_Limit<20)
+summary(train$Changed_Credit_Limit)
+
 #SCARTO TUTTE LE RIGHE CHE HANNO UN VALORE Num_Credit_Inquiries ANOMALO
 train = subset(train, Num_Credit_Inquiries<50)
 summary(train$Num_Credit_Inquiries)
@@ -78,6 +86,10 @@ train$Outstanding_Debt = gsub('_', '', train$Outstanding_Debt)
 train$Outstanding_Debt = as.numeric(train$Outstanding_Debt) 
 summary(train$Outstanding_Debt)
 
+#SCARTO TUTTE LE RIGHE CHE HANNO UN VALORE Outstanding_Debt ANOMALO
+train = subset(train, Outstanding_Debt<4000)
+summary(train$Outstanding_Debt)
+
 #MODIFICA LA COLONNA Credit_History_Age
 library(stringr)
 anni_e_mesi <- str_match(train$Credit_History_Ag, "(\\d+) Years and (\\d+) Months")
@@ -88,7 +100,7 @@ train$Credit_History_Age = Age_in_years
 summary(train$Credit_History_Age)
 
 #SCARTO TUTTE LE RIGHE CHE HANNO UN VALORE Total_EMI_per_month ANOMALO
-train = subset(train, Total_EMI_per_month<500)
+train = subset(train, Total_EMI_per_month<400)
 summary(train$Total_EMI_per_month)
 
 #CORREGGO LA COLONNA Amount_invested_monthly
@@ -177,9 +189,10 @@ library(dplyr)
 reg_log <- reg_log %>%
   mutate(Credit_Score = recode(Credit_Score, "Good" = 1,
                                "Poor" = 0))
-par(mfrow = c(3, 6))
+
 
 # Creazione dei boxplot per tutte le variabili
+par(mfrow = c(3, 6))
 boxplot(reg_log$Age, main = "Age", col = "lightblue")
 boxplot(reg_log$Annual_Income, main = "Annual Income", col = "lightgreen")
 boxplot(reg_log$Monthly_Inhand_Salary, main = "Monthly Inhand Salary", col = "lightcoral")
@@ -228,10 +241,25 @@ re=glm(Credit_Score~ Age+ Annual_Income + Monthly_Inhand_Salary+ Num_Bank_Accoun
         data=train_set,family=binomial)
 summary(re)
 
+#TOLGO LE SEGUENTI VARIBAILI PERCHè NON SONO SIGN Age,Annual_Income,Num_of_Loan,Changed_Credit_Limit,Credit_Utilization_Ratio,Total_EMI_per_month,Amount_invested_monthly,Monthly_Balance  
 #RIFACCIO IL MODELLO ELIMINANDO LE VARIABILI NON SIGNIFICATIVE
-reg=glm(Credit_Score~ Age+ Num_Credit_Card+Interest_Rate+Delay_from_due_date+Num_of_Delayed_Payment+Num_Credit_Inquiries+Outstanding_Debt+Credit_History_Age,
+r=glm(Credit_Score~Monthly_Inhand_Salary + Num_Bank_Accounts +
+        Num_Credit_Card+Interest_Rate+Delay_from_due_date+Num_of_Delayed_Payment+
+        Num_Credit_Inquiries+Outstanding_Debt+Credit_History_Age,
         data=train_set,family=binomial)
+summary(r)
+
+#TOLGO LE SEGUENTI VARIABILI NON SIGN Monthly_Inhand_Salary
+#RIFACCIO IL MODELLO ELIMINANDO LE VARIABILI NON SIGNIFICATIVE
+reg=glm(Credit_Score~Num_Bank_Accounts +
+        Num_Credit_Card+Interest_Rate+Delay_from_due_date+Num_of_Delayed_Payment+
+        Num_Credit_Inquiries+Outstanding_Debt+Credit_History_Age,
+      data=train_set,family=binomial)
 summary(reg)
+
+#TEST ANOVA
+anova(re,r,reg,test="Chisq")
+#meglio il completo ma sticazzi
 
 #COEFFICIENTI MOLTO BASSI 
 
@@ -248,9 +276,9 @@ is.na(reg.probs)==FALSE
 
 #CREIAMO UN VETTORE DI CLASS PREDICTIONS BASATO SE LA PROBABILITA' PREDETTA SARA' MAGGIORE O 
 #MINORE DI 0.5. if prob(Good) > 0.5 --> "Good"
-reg.pred <- rep("Poor", 639)
+reg.pred <- rep("0", 451)
 reg.pred
-reg.pred[reg.probs > .5] <- "Good"
+reg.pred[reg.probs > .5] <- "1"
 reg.pred
 
 reg.pred[1:10]
@@ -261,26 +289,171 @@ round(reg.probs[1:10],3)
 Credit_Score_test=test_set$Credit_Score
 table(reg.pred, Credit_Score_test)
 
+#CREO VARIBILI FN,FP,TP,TN,n
+fn=22
+fp=42
+tp=130
+tn=257
+n=451
+
 #TEST ERROR RATE (FN+FP/n)
-e=((46+21)/639)
+e=((fn+fp)/n)
 e
+#0.1419069
 
 #ACCURACY (TN+TP/n)
-a=((374+198)/639)
+a=((tn+tp)/n)
 a
+#0.8580931
 
 #SPECIFICITY (TN/TN+FP)
-sp=(374/(374+46))
+sp=(tn/(tn+fp))
 sp
+#0.8595318
 
 #SENSITIVITY (TP/FN+TP)
-se=(198/(21+198))
+se=(tp/(fn+tp))
 se
+#0.8552632
+
+#ERRORE CLASSI NEGATIVE FP/N
+en=(fp/(tp+fp))
+en
+#0.244186
+
+#ERRORE CLASSI POSITIVO FN/P
+ep=(fn/(fn+tp))
+ep
+#0.1447368
+
+#PER LA BANCA è PIU IMPORTANTE AVERE SPECIFICITY PIU ALTA QUINDI AUMENTIAMO THRESHOLD
+reg.pred <- rep("0", 451)
+reg.pred
+reg.pred[reg.probs > .80] <- "1"
+reg.pred
+
+reg.pred[1:10]
+round(reg.probs[1:10],3)
+
+#USIAMO TABLE() PER CREARE UNA CONFUSION MATRIX PER DETERMINARE QUANTE OSSERVAZIONI
+#SONO STATE CLASSIFICATE GIUSTE
+Credit_Score_test=test_set$Credit_Score
+table(reg.pred, Credit_Score_test)
+
+#CREO VARIBILI FN,FP,TP,TN,n
+fn=68
+fp=14
+tp=84
+tn=285
+n=451
+
+#TEST ERROR RATE (FN+FP/n)
+e=((fn+fp)/n)
+e
+#0.1818182
+
+#ACCURACY (TN+TP/n)
+a=((tn+tp)/n)
+a
+#0.8181818
+
+#SPECIFICITY (TN/TN+FP)
+sp=(tn/(tn+fp))
+sp
+#0.9531773
+
+#SENSITIVITY (TP/FN+TP)
+se=(tp/(fn+tp))
+se
+#0.5526316
+
+#ERRORE CLASSI NEGATIVE FP/N
+en=(fp/(tp+fp))
+en
+#0.1428571
+
+#ERRORE CLASSI POSITIVO FN/P
+ep=(fn/(fn+tp))
+ep
+#0.4473684
+
 
 #NON CAPISCO
 #The mean() function can be used to compute how many
 # credit score prediction was correct. 
-mean(reg.pred == test_set$Credit_Score)
+mean(re.pred == test_set$Credit_Score)
+
+
+
+#####CLUSTER####
+###### K-Means Clustering ----
+##DEVO FARE SUBSET CON STANDARD
+kl=subset(train)
+
+#RIORDINO GLI INDICI DA 1 A N
+rownames(kl) = NULL
+
+#ELIMINO MONTH,CREDIT_MIX E TYPE_OF_LOAN COME VARIABILI
+kl= kl[, -which(names(kl) == "Month")]
+kl=kl[, -which(names(kl) == "Credit_Mix")]
+kl= kl[, -which(names(kl) == "Type_of_Loan")]
+
+#TRASFORMO LA COLONNA CREDIT_SCORE IN UNA VARIABILE BINARIA
+library(dplyr)
+#reg_log$Credit_Score=ifelse(reg_log$Credit_Score=="Good",1,0)
+kl <- kl %>%
+  mutate(Credit_Score = recode(Credit_Score, "Good" = 2,
+                               "Standard"=1,
+                               "Poor" = 0))
+
+
+library(readr)
+set.seed(123)
+
+# Since our dataset has 11 industries,
+# we choose a number of clusters equal to 11 for K-Means 
+kl.out <- kmeans(kl[,-c(18)], 3, nstart = 20, iter.max = 20)
+
+#Memberships
+kl.out$cluster[1:20]
+clusters = as.data.frame(kl.out$cluster)
+
+#centroids
+kl.out$centers[,1:17]
+
+library(ggplot2)
+library(ggfortify)
+autoplot(stats::kmeans(kl[,-c(18)], 3, nstart = 20, iter.max = 20), data = kl)
+
+library(knitr)
+d <- table(kl$Credit_Score,kl.out$cluster)
+kable(d)
+# Remember the label switch problem!
+library(sp)
+library(maps)
+library(shapefiles)
+library(foreign)
+library(fossil)
+kl$Credit_Score_numeric<-as.factor(kl$Credit_Score)
+kl$Credit_Score_numeric<-as.numeric(kl$Credit_Score_numeric)
+rand.index(kl$Credit_Score_numeric,kl.out$cluster)
+
+# We fixed K = 11 because we have 11 industries... 
+# But what can we do if we do not know this information?
+
+set.seed(123)
+# Compute and plot wss for k = 2 to k = 15.
+k.max <- 15
+wss <- sapply(2:k.max, 
+              function(k){kmeans(data[,c(4:252)], k, nstart=25,iter.max = 20 )$tot.withinss})
+wss
+plot(2:k.max, wss,
+     type="b", pch = 19, frame = FALSE, 
+     xlab="Number of clusters K",
+     ylab="Total within-clusters sum of squares")
+
+
+
 
 
 
