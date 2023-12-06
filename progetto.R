@@ -1,5 +1,5 @@
 library('dplyr')
-library(gplots)
+library('gplots')
 train = read.csv('train.csv')
 
 ######TRAIN SET#####
@@ -184,7 +184,6 @@ reg_log= reg_log[, -which(names(reg_log) == "Type_of_Loan")]
  
 #TRASFORMO LA COLONNA CREDIT_SCORE IN UNA VARIABILE BINARIA
 library(dplyr)
-#reg_log$Credit_Score=ifelse(reg_log$Credit_Score=="Good",1,0)
 
 reg_log <- reg_log %>%
   mutate(Credit_Score = recode(Credit_Score, "Good" = 1,
@@ -236,8 +235,8 @@ test_set = subset(reg_log, split == FALSE)
 
 summary(train_set)
 
-#ESEGUO REGRESSONE LOGISTICA E NOTO CHE ALCUNE VARIABILI NON SONO SIGNIFICATIVE
-re=glm(Credit_Score~ Age+ Annual_Income + Monthly_Inhand_Salary+ Num_Bank_Accounts+ Num_Credit_Card+Interest_Rate+Num_of_Loan+Delay_from_due_date+Num_of_Delayed_Payment+Changed_Credit_Limit+Num_Credit_Inquiries+Outstanding_Debt+Credit_Utilization_Ratio+Credit_History_Age+Total_EMI_per_month+Amount_invested_monthly+ Monthly_Balance,
+#ESEGUO REGRESSIONE LOGISTICA E NOTO CHE ALCUNE VARIABILI NON SONO SIGNIFICATIVE
+re=glm(Credit_Score~ Age + Annual_Income + Monthly_Inhand_Salary + Num_Bank_Accounts+ Num_Credit_Card+Interest_Rate+Num_of_Loan+Delay_from_due_date+Num_of_Delayed_Payment+Changed_Credit_Limit+Num_Credit_Inquiries+Outstanding_Debt+Credit_Utilization_Ratio+Credit_History_Age+Total_EMI_per_month+Amount_invested_monthly+ Monthly_Balance,
         data=train_set,family=binomial)
 summary(re)
 
@@ -257,13 +256,11 @@ reg=glm(Credit_Score~Num_Bank_Accounts +
       data=train_set,family=binomial)
 summary(reg)
 
-#TEST ANOVA
-anova(re,r,reg,test="Chisq")
-#meglio il completo ma sticazzi
+#AIC e BIC
+AIC(reg)
+BIC(reg)
 
-#COEFFICIENTI MOLTO BASSI 
-
-#FACCIO GRAFICI PER CAPIRE DISTRIBUZIONE REG
+#FACCIO GRAFICI PER CAPIRE DISTRIBUZIONE REG --------- Studiare
 par(mfrow=c(2,2))
 plot(reg)
 dev.off()
@@ -326,6 +323,12 @@ ep=(fn/(fn+tp))
 ep
 #0.1447368
 
+# AREA UNDER ROC CURVE
+library(pROC)
+reg.pred = as.numeric(reg.pred)
+roc_curve <- roc(response = test_set$Credit_Score, predictor = reg.pred)
+auc(roc_curve)
+
 #PER LA BANCA è PIU IMPORTANTE AVERE SPECIFICITY PIU ALTA QUINDI AUMENTIAMO THRESHOLD
 reg.pred <- rep("0", 451)
 reg.pred
@@ -377,12 +380,27 @@ ep=(fn/(fn+tp))
 ep
 #0.4473684
 
+#AREA UNDER ROC CURVE
+library(pROC)
+reg.pred = as.numeric(reg.pred)
+roc_curve <- roc(response = test_set$Credit_Score, predictor = reg.pred)
+auc(roc_curve)
 
-#NON CAPISCO
-#The mean() function can be used to compute how many
-# credit score prediction was correct. 
-mean(re.pred == test_set$Credit_Score)
 
+"""
+L Area sotto la curva ROC (AUC-ROC) è una misura di quanto bene 
+un modello di classificazione possa distinguere tra le classi positive 
+e negative. L'AUC-ROC varia da 0 a 1, dove un valore più alto indica 
+una migliore capacità discriminante del modello. 
+Ecco come interpretare il tuo risultato di 0.7529:
+
+AUC-ROC = 0.5: Indica una capacità discriminante casuale, come quella di un classificatore che fa previsioni casuali.
+0.5 < AUC-ROC < 0.7: Indica una scarsa capacità discriminante. Il modello ha difficoltà a distinguere tra le classi positive e negative.
+0.7 < AUC-ROC < 0.8: Indica una capacità discriminante ragionevole. Il modello ha una discreta capacità di distinguere tra le classi, ma ci sono margini di miglioramento.
+0.8 < AUC-ROC < 0.9: Indica una buona capacità discriminante. Il modello è efficace nel distinguere tra le classi positive e negative.
+AUC-ROC > 0.9: Indica un'eccellente capacità discriminante. Il modello è molto efficace nel distinguere tra le classi positive e negative.
+Nel tuo caso, con un AUC-ROC di 0.7529, il modello mostra una capacità discriminante ragionevole. Tuttavia, potrebbe esserci spazio per miglioramenti. Considera anche di esaminare la curva ROC per ottenere ulteriori informazioni sulla trade-off tra sensibilità e specificità a diversi punti di soglia.
+"""
 
 
 #####CLUSTER####
@@ -410,12 +428,12 @@ kl <- kl %>%
 library(readr)
 set.seed(123)
 
-# Since our dataset has 11 industries,
-# we choose a number of clusters equal to 11 for K-Means 
-kl.out <- kmeans(kl[,-c(18)], 3, nstart = 20, iter.max = 20)
+
+# we choose a number of clusters equal to 3 for K-Means 
+kl.out <- kmeans(kl[,-c(18)], 3, nstart = 40, iter.max = 40)
 
 #Memberships
-kl.out$cluster[1:20]
+kl.out$cluster[1:40]
 clusters = as.data.frame(kl.out$cluster)
 
 #centroids
@@ -423,37 +441,56 @@ kl.out$centers[,1:17]
 
 library(ggplot2)
 library(ggfortify)
-autoplot(stats::kmeans(kl[,-c(18)], 3, nstart = 20, iter.max = 20), data = kl)
 
-library(knitr)
-d <- table(kl$Credit_Score,kl.out$cluster)
+#NORMALE
+autoplot(stats::kmeans(kl[, -c(18)], 3, nstart = 40, iter.max = 40), data = kl)
+
+#STANDARDIZZATO
+kl_standardized <- scale(kl)
+kl_standardized = as.data.frame(kl_standardized)
+autoplot(stats::kmeans(kl_standardized[,-c(18)], 3, nstart = 40, iter.max = 40), data = kl)
+
+
+#### Hierarchical Clustering ----
+
+hc.complete<-hclust(dist(kl[,-c(18)]), method="complete") 
+# largest distance between the data points in the clusters
+
+# or "single" or "average"
+
+cut_avg <- cutree(hc.complete, k = 3)
+table(cut_avg)
+
+#install.packages('dendextend')
+library(dendextend)
+avg_dend_obj <- as.dendrogram(hc.complete)
+avg_col_dend <- color_branches(avg_dend_obj, k = 3)
+plot(avg_col_dend)
+
+d <- table(kl$Credit_Score,cut_avg)
 kable(d)
-# Remember the label switch problem!
-library(sp)
-library(maps)
-library(shapefiles)
-library(foreign)
-library(fossil)
-kl$Credit_Score_numeric<-as.factor(kl$Credit_Score)
-kl$Credit_Score_numeric<-as.numeric(kl$Credit_Score_numeric)
-rand.index(kl$Credit_Score_numeric,kl.out$cluster)
-
-# We fixed K = 11 because we have 11 industries... 
-# But what can we do if we do not know this information?
-
-set.seed(123)
-# Compute and plot wss for k = 2 to k = 15.
-k.max <- 15
-wss <- sapply(2:k.max, 
-              function(k){kmeans(data[,c(4:252)], k, nstart=25,iter.max = 20 )$tot.withinss})
-wss
-plot(2:k.max, wss,
-     type="b", pch = 19, frame = FALSE, 
-     xlab="Number of clusters K",
-     ylab="Total within-clusters sum of squares")
 
 
+#Remark: scaling variables yields different results!!!
+xsc <- scale(kl[,-c(18)])
+hc.complete1<-hclust(dist(xsc), method="complete") 
 
+cut_avg1 <- cutree(hc.complete1, k = 3)
 
+avg_dend_obj1 <- as.dendrogram(hc.complete1)
+avg_col_dend1 <- color_branches(avg_dend_obj1, k = 3)
 
+plot(avg_col_dend1, main = "Hierarchical Clustering with Scaled Features")
 
+# Correlation-based distance can be computed using the as.dist()
+# which converts an arbitrary square symmetric matrix into a form that
+# the hclust() function recognizes as a distance matrix
+dd <- as.dist(1 - cor(t(xsc)))
+
+hc.complete2<-hclust(dd, method="complete")
+cut_avg2 <- cutree(hc.complete2, k = 3)
+
+avg_dend_obj2 <- as.dendrogram(hc.complete2)
+avg_col_dend2 <- color_branches(avg_dend_obj2, k = 3)
+
+plot(avg_col_dend2, main = "Complete Linkage with Correlation-Based Distance")
