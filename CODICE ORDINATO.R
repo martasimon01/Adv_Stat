@@ -292,3 +292,26 @@ auc(roc_curve)
 #OF COURSE CHANGING THE THRESHOLD IN ORDER TO INCREASE THE SPECIFICITY
 #LEADS TO AN INCREMENT OF THE TEST ERROR RATE AND A REDUCTION IN
 #SENSITIVITY AND AREA UNDER ROC CURVE
+
+#HIERARCHICAL CLUSTERING
+kl=subset(data)
+kl = kl[, -which(names(kl) == "Month")]
+kl = kl[, -which(names(kl) == "Credit_Mix")]
+kl = kl[, -which(names(kl) == "Type_of_Loan")]
+rownames(kl) = NULL
+
+kl <- kl %>%
+  mutate(Credit_Score = recode(Credit_Score, "Good" = 2,
+                               "Standard"=1,
+                               "Poor" = 0))
+
+hc.complete = hclust(dist(kl[,-c(18)]), method="complete") 
+
+cut_avg <- cutree(hc.complete, k = 3)
+table(cut_avg)
+
+avg_dend_obj <- as.dendrogram(hc.complete)
+avg_col_dend <- color_branches(avg_dend_obj, k = 3)
+plot(avg_col_dend)
+abline(h = 60000, col = "red", lty = 2)
+
