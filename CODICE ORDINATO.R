@@ -142,7 +142,7 @@ for (i in 1:nrow(data)) {
 table(data$Month)  # the most frequent is JANUARY
 data = subset(data, Month == 'January')
 
-#DELETE THE LAST ROWS THAT HAVE SOME NaN VALUE
+#DELETE ROWS THAT HAVE SOME NaN VALUE
 colSums(is.na(data))
 data = subset(data, is.na(Credit_History_Age) == FALSE)
 data = subset(data, is.na(Credit_Mix) == FALSE)
@@ -204,8 +204,13 @@ reg=glm(Credit_Score~Num_Bank_Accounts +
 summary(reg)
 
 #AIC and BIC
-AIC(reg)
-BIC(reg)
+cat('AIC - Primo modello:', AIC(re), '\n',
+    'AIC - Secondo modello:', AIC(r), '\n',
+    'AIC - Terzo modello:', AIC(reg), '\n',
+    'BIC - Primo modello:', BIC(re), '\n',
+    'BIC - Secondo modello:', BIC(r), '\n',
+    'BIC - Terzo modello:', BIC(reg))
+
 
 #PREDICTION WITH THRESHOLD = 0.5
 reg.probs <- predict(reg,test_set, type = "response")
@@ -230,25 +235,21 @@ tn=257
 n=451
 
 test_error_rate = ((fn+fp)/n)
-accurancy = ((tn+tp)/n)
+accuracy = ((tn+tp)/n)
 specificity = (tn/(tn+fp))
 sensitivity = (tp/(fn+tp))
-error_negative = (fp/(tp+fp))
-error_positive = (fn/(fn+tp))
-
-cat('test_error_rate =', test_error_rate, '\n',
-    'accurancy =', accurancy, '\n',
-    'specificity =', specificity, '\n',
-    'sensitivity =', sensitivity, '\n',
-    'error_negative =', error_negative, '\n',
-    'error_positive =', error_positive, '\n')
 
 #AREA UNDER ROC CURVE
 reg.pred = as.numeric(reg.pred)
 roc_curve <- roc(response = test_set$Credit_Score, predictor = reg.pred)
-auc(roc_curve)
 
-#FOR THE BANK IS VERY IMPORTANT TO HAVE AN HIGHTER SPECIFITY IN ORDER
+cat('test_error_rate =', test_error_rate, '\n',
+    'accuracy =', accuracy, '\n',
+    'specificity =', specificity, '\n',
+    'sensitivity =', sensitivity, '\n',
+    'area under ROC curve =', auc(roc_curve))
+
+#FOR THE BANK IS VERY IMPORTANT TO HAVE AN HIGHER SPECIFITY IN ORDER
 #TO AVOID TO CLASSIFY A BAD CREDIT SCORE AS A GOOD ONE.
 #TO DO THIS WE HAVE TO INCREMENT THE THRESHOLD.
 
@@ -271,27 +272,25 @@ tn=285
 n=451
 
 test_error_rate = ((fn+fp)/n)
-accurancy = ((tn+tp)/n)
+accuracy = ((tn+tp)/n)
 specificity = (tn/(tn+fp))
 sensitivity = (tp/(fn+tp))
-error_negative = (fp/(tp+fp))
-error_positive = (fn/(fn+tp))
-
-cat('test_error_rate =', test_error_rate, '\n',
-    'accurancy =', accurancy, '\n',
-    'specificity =', specificity, '\n',
-    'sensitivity =', sensitivity, '\n',
-    'error_negative =', error_negative, '\n',
-    'error_positive =', error_positive, '\n')
 
 #AREA UNDER ROC CURVE
 reg.pred = as.numeric(reg.pred)
 roc_curve <- roc(response = test_set$Credit_Score, predictor = reg.pred)
-auc(roc_curve)
+
+cat('test_error_rate =', test_error_rate, '\n',
+    'accuracy =', accuracy, '\n',
+    'specificity =', specificity, '\n',
+    'sensitivity =', sensitivity, '\n',
+    'area under ROC curve =', auc(roc_curve))
+
 
 #OF COURSE CHANGING THE THRESHOLD IN ORDER TO INCREASE THE SPECIFICITY
 #LEADS TO AN INCREMENT OF THE TEST ERROR RATE AND A REDUCTION IN
 #SENSITIVITY AND AREA UNDER ROC CURVE
+
 
 #HIERARCHICAL CLUSTERING
 kl=subset(data)
@@ -307,11 +306,11 @@ kl <- kl %>%
 
 hc.complete = hclust(dist(kl[,-c(18)]), method="complete") 
 
-cut_avg <- cutree(hc.complete, k = 3)
-table(cut_avg)
+cut_compl <- cutree(hc.complete, k = 3)
+table(cut_compl)
 
-avg_dend_obj <- as.dendrogram(hc.complete)
-avg_col_dend <- color_branches(avg_dend_obj, k = 3)
-plot(avg_col_dend)
+compl_dend_obj <- as.dendrogram(hc.complete)
+compl_col_dend <- color_branches(compl_dend_obj, k = 3)
+plot(compl_col_dend)
 abline(h = 60000, col = "red", lty = 2)
 
